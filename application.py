@@ -110,4 +110,4 @@ def predict_image():
 
 # Run the Flask server on your localhost
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(host='127.0.0.1', port=8000, debug=True)
