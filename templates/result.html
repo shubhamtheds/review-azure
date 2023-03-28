@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Image Classifier</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='/css/style.css') }}">
+  </head>
+  <body>
+    <h1>Image Classifier</h1>
+    <p>Predicted Label: {{ predicted_label }}</p>
+    <p>Breed Name: {{ breed_name }}</p>
+    {% if image %}
+      <img src="data:image/png;base64,{{ image }}" alt="Processed image" width="224" height="224">
+    {% endif %}
+  </body>
+</html>
