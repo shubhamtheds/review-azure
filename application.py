@@ -20,6 +20,7 @@ loaded_full_model = tf.keras.models.load_model(model_path, custom_objects={"Kera
 # Define the image size
 IMG_SIZE = 224
 
+
 # Add the process_image function
 def process_image(image_path):
     image = tf.io.read_file(image_path)
@@ -28,36 +29,48 @@ def process_image(image_path):
     image = tf.image.resize(image, size=[IMG_SIZE, IMG_SIZE])
     return image
 
+
 # Add the get_image_label function
 def get_image_label(image_path, label):
     image = process_image(image_path)
     return image, label
+
 
 # Create the index page with the image upload form
 @app.route('/', methods=['GET'])
 def index():
     return render_template("index.html")
 
+
 # Serve uploaded images
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+
 # Create the Flask endpoint for uploading an image and returning the predicted label and breed name.
-@app.route('/predict', methods=['POST'])
+@app.route('/predict', methods=['POST'], endpoint='predict_image')
 def predict_image():
     file = request.files['file']
-    if file and file.filename.endswith('.png'):
-        # Process the uploaded image
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-        processed_image = process_image(file_path)
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
-        # Predict the label and breed name
-        prediction = loaded_full_model.predict(tf.expand_dims(processed_image, axis=0))
-        pred_label = np.argmax(prediction)
-        breed_name = ['affenpinscher', 'afghan_hound', 'african_hunting_dog', 'airedale',
+    # Check if the file is a JPG image and convert it to PNG format
+    if file and file.filename.endswith('.jpg'):
+        image = Image.open(file)
+        file_path = file_path.replace('.jpg', '.png')
+        image.save(file_path)
+    elif file and file.filename.endswith('.png'):
+        file.save(file_path)
+    else:
+        return render_template("index.html", error="Invalid file format. Please upload a JPG or PNG image.")
+
+    processed_image = process_image(file_path)
+
+    # Predict the label and breed name
+    prediction = loaded_full_model.predict(tf.expand_dims(processed_image, axis=0))
+    pred_label = np.argmax(prediction)
+    breed_name = ['affenpinscher', 'afghan_hound', 'african_hunting_dog', 'airedale',
        'american_staffordshire_terrier', 'appenzeller',
        'australian_terrier', 'basenji', 'basset', 'beagle',
        'bedlington_terrier', 'bernese_mountain_dog',
@@ -94,19 +107,18 @@ def predict_image():
        'west_highland_white_terrier', 'whippet',
        'wire-haired_fox_terrier', 'yorkshire_terrier']
 
-        # Get the breed name
-        label = str(pred_label)
-        breed = breed_name[int(label)]
+    # Get the breed name
+    label = str(pred_label)
+    breed = breed_name[int(label)]
 
-        # Convert the processed image to base64 and pass it to the result template
-        img_io = io.BytesIO()
-        Image.fromarray((processed_image.numpy() * 255).astype(np.uint8)).save(img_io, 'PNG')
-        img_io.seek(0)
-        img_base64 = base64.b64encode(img_io.read()).decode('ascii')
+    # Convert the processed image to base64 and pass it to the result template
+    img_io = io.BytesIO()
+    Image.fromarray((processed_image.numpy() * 255).astype(np.uint8)).resize((224, 224)).save(img_io, 'PNG')
+    img_io.seek(0)
+    img_base64 = base64.b64encode(img_io.read()).decode('ascii')
 
-        return render_template("result.html", predicted_label=label, breed_name=breed, image=img_base64)
-    else:
-        return render_template("index.html", error="Invalid file format. Please upload a PNG image.")
+    return render_template("result.html", predicted_label=label, breed_name=breed, image=img_base64)
+
 
 # Run the Flask server on your localhost
 if __name__ == '__main__':
